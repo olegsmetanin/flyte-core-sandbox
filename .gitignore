@@ -1,0 +1,5 @@
+charts/
+__pycache__/
+certs/
+kubeconfig.yaml
+.DS_Store

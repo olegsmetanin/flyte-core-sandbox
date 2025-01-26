@@ -1,0 +1,211 @@
+{{- if .Values.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "flyte-proxy.proxyConfigMapName" . }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels: {{- include "flyte-proxy.labels" . | nindent 4 }}
+data:
+  envoy.yaml: |
+    admin:
+      access_log_path: /dev/stdout
+    static_resources:
+      listeners:
+        - address:
+            socket_address:
+              address: 0.0.0.0
+              port_value: 8000
+          filter_chains:
+            - filters:
+                - name: envoy.filters.network.http_connection_manager
+                  typed_config:
+                    "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+                    stat_prefix: ingress_http
+                    codec_type: AUTO
+                    upgrade_configs:
+                      - upgrade_type: websocket
+                    route_config:
+                      name: local_route
+                      virtual_hosts:
+                        - name: backend
+                          domains:
+                            - "*"
+                          routes:
+                            - match:
+                                path: "/"
+                              redirect:
+                                path_redirect: "/console/"
+                            - match:
+                                prefix: "/.well-known"
+                              route:
+                                cluster: flyteadmin_http
+                            - match:
+                                prefix: "/__webpack_hmr"
+                              route:
+                                cluster: flyteconsole_http
+                            - match:
+                                prefix: "/api"
+                              route:
+                                cluster: flyteadmin_http
+                            - match:
+                                prefix: "/callback"
+                              route:
+                                cluster: flyteadmin_http
+                            - match:
+                                prefix: "/config"
+                              route:
+                                cluster: flyteadmin_http
+                            - match:
+                                prefix: "/console"
+                              route:
+                                cluster: flyteconsole_http
+                            - match:
+                                prefix: "/healthcheck"
+                              route:
+                                cluster: flyteadmin_http
+                            - match:
+                                prefix: "/login"
+                              route:
+                                cluster: flyteadmin_http
+                            - match:
+                                prefix: "/logout"
+                              route:
+                                cluster: flyteadmin_http
+                            - match:
+                                prefix: "/me"
+                              route:
+                                cluster: flyteadmin_http
+                            - match:
+                                prefix: "/oauth2"
+                              route:
+                                cluster: flyteadmin_http
+                            - match:
+                                prefix: "/v1"
+                              route:
+                                cluster: flyteadmin_http
+                            - match:
+                                prefix: "/flyteidl.service.AdminService"
+                              route:
+                                cluster: flyteadmin_grpc
+                            - match:
+                                prefix: "/flyteidl.service.AuthMetadataService"
+                              route:
+                                cluster: flyteadmin_grpc
+                            - match:
+                                prefix: "/flyteidl.service.DataProxyService"
+                              route:
+                                cluster: flyteadmin_grpc
+                            - match:
+                                prefix: "/flyteidl.service.IdentityService"
+                              route:
+                                cluster: flyteadmin_grpc
+                            - match:
+                                prefix: "/grpc.health.v1.Health"
+                              route:
+                                cluster: flyteadmin_grpc
+                            - match:
+                                prefix: "/flyteidl.service.SignalService"
+                              route:
+                                cluster: flyteadmin_grpc
+                            # - match:
+                            #     path: "/kubernetes-dashboard"
+                            #   redirect:
+                            #     path_redirect: "/kubernetes-dashboard/"
+                            # - match:
+                            #     prefix: "/kubernetes-dashboard/"
+                            #   route:
+                            #     cluster: kubernetes-dashboard
+                            #     prefix_rewrite: /
+                            - match:
+                                path: "/minio"
+                              redirect:
+                                path_redirect: "/minio/"
+                            - match:
+                                prefix: "/minio/"
+                              route:
+                                cluster: minio
+                                prefix_rewrite: /
+                    http_filters:
+                      - name: envoy.filters.http.router
+                        typed_config:
+                          "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
+              # TLS for envoy ingress, doesn't work:
+              # GRPC calls failed with "Cannot check peer: missing selected ALPN property"
+              # transport_socket:
+              #   name: envoy.transport_sockets.tls
+              #   typed_config:
+              #     "@type": type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.DownstreamTlsContext
+              #     common_tls_context:
+              #       tls_certificates:
+              #       - certificate_chain:
+              #           filename: "/certs/tls.crt"
+              #         private_key:
+              #           filename: "/certs/tls.key"
+      clusters:
+        - name: flyteconsole_http
+          connect_timeout: 0.25s
+          type: STRICT_DNS
+          lb_policy: ROUND_ROBIN
+          load_assignment:
+            cluster_name: flyteconsole_http
+            endpoints:
+              - lb_endpoints:
+                  - endpoint:
+                      address:
+                        socket_address:
+                          address: flyteconsole
+                          port_value: 80
+        - name: flyteadmin_http
+          connect_timeout: 0.25s
+          type: STRICT_DNS
+          lb_policy: ROUND_ROBIN
+          load_assignment:
+            cluster_name: flyteadmin_http
+            endpoints:
+              - lb_endpoints:
+                  - endpoint:
+                      address:
+                        socket_address:
+                          address: flyteadmin
+                          port_value: 80
+        - name: flyteadmin_grpc
+          connect_timeout: 0.25s
+          type: STRICT_DNS
+          lb_policy: ROUND_ROBIN
+          http2_protocol_options: {}
+          load_assignment:
+            cluster_name: flyteadmin_grpc
+            endpoints:
+              - lb_endpoints:
+                  - endpoint:
+                      address:
+                        socket_address:
+                          address: flyteadmin
+                          port_value: 81
+        # - name: kubernetes-dashboard
+        #   connect_timeout: 0.25s
+        #   type: STRICT_DNS
+        #   lb_policy: ROUND_ROBIN
+        #   load_assignment:
+        #     cluster_name: kubernetes-dashboard
+        #     endpoints:
+        #       - lb_endpoints:
+        #           - endpoint:
+        #               address:
+        #                 socket_address:
+        #                   address: flyte-sandbox-kubernetes-dashboard
+        #                   port_value: 80
+        - name: minio
+          connect_timeout: 0.25s
+          type: STRICT_DNS
+          lb_policy: ROUND_ROBIN
+          load_assignment:
+            cluster_name: minio
+            endpoints:
+              - lb_endpoints:
+                  - endpoint:
+                      address:
+                        socket_address:
+                          address: minio
+                          port_value: 9001
+{{- end }}

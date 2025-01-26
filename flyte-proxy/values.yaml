@@ -1,0 +1,7 @@
+enabled: false
+minio:
+  enabled: true
+image:
+  repository: envoyproxy/envoy
+  tag: v1.31-latest
+  pullPolicy: IfNotPresent

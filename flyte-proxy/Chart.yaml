@@ -1,0 +1,7 @@
+apiVersion: v2
+name: flyte-proxy
+description: Chart for Flyte envoy proxy
+type: application
+version: v1.14.1
+
+
