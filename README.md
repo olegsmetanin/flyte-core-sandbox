@@ -53,21 +53,21 @@ flytectl get execution -p flytesnacks -d development
 ```
 $ pyflyte run --remote ./examples/hello_world.py hello_world_wf
 ```
-open execution returned http://localhost:8088/console/projects/flytesnacks/domains/development/executions/... link in browrser
+open execution returned http://localhost:8088/console/projects/flytesnacks/domains/development/executions/... link in browser
 
 ## Private Docker registry cases
 
 ### Deploy private docker registry in Kubernetes
-This step can be skipped if you already have properly installed container registry. To install private doker registry in private Kubernetes you have to:
-1. Generate self-signed certificates for Certificate Autorithy (CA)
+This step can be skipped if you already have properly installed container registry. To install private docker registry in private Kubernetes you have to:
+1. Generate self-signed certificates for Certificate Authority (CA)
 2. Generate self-signed certificates for private Docker registry
 3. Create kubernetes namespace and secret with docker registry key and certificate
 4. Deploy private Docker registry helm-chart
-5. Get ClusterIP of docker registry, test the deplyment
+5. Get ClusterIP of docker registry, test the deployment
 6. Save self-signed CA certificates and add hosts record in all kubernetes nodes
 7. Update certificate cache
 
-### 1. Generate self-signed certificates for Certificate Autorithy (CA)
+### 1. Generate self-signed certificates for Certificate Authority (CA)
 ```
 $ mkdir -p certs
 
@@ -125,7 +125,7 @@ $ helm upgrade docker-registry twuni/docker-registry \
   --set tlsSecretName=secret-tls-docker-registry
 ```
 
-### 5. Get ClusterIP of docker registry, test the deplyment
+### 5. Get ClusterIP of docker registry, test the deployment
 ```
 $ kubectl get service/registry -n docker-registry
 NAME              TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
@@ -134,7 +134,7 @@ docker-registry   ClusterIP   10.21.116.XXX   <none>        5000/TCP   18h
 # Bind docker registry port to localhost:5000
 $ kubectl -n docker-registry port-forward service/registry 5000:5000
 
-# Test avaliablity
+# Test availablity
 $ curl -k https://localhost:5000/v2/_catalog
 # {"repositories":[]}
 ```
@@ -200,7 +200,7 @@ $ kubectl -n docker-registry port-forward service/registry 5000:5000
 ```
 $ pyflyte run --remote ./examples/custom_container.py custom_container_wf
 ```
-open execution returned http://localhost:8088/console/projects/flytesnacks/domains/development/executions/... link in browrser
+open execution returned http://localhost:8088/console/projects/flytesnacks/domains/development/executions/... link in browser
 
 ## Debugging Templates
 
